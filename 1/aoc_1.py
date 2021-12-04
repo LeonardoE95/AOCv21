@@ -55,12 +55,10 @@ def part_two():
     with open("input.txt") as f:
         lines = f.readlines()
         length = len(lines)
-        i = 0
         
         last_val = -1
         if length > 3:
             last_val = int(lines[0]) + int(lines[1]) + int(lines[2])
-            i += 3
         else:
             return
 
@@ -69,7 +67,6 @@ def part_two():
 
             if i + 2 < length:
                 curr_val = int(lines[i]) + int(lines[i + 1]) + int(lines[i + 2])
-                i += 3
             else:
                 break
 
