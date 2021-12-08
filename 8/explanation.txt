@@ -1,0 +1,81 @@
+Each digit of a seven-segment display is rendered by turning on or off
+any of seven segments named a through g:
+
+  0:      1:      2:      3:      4:
+ aaaa    ....    aaaa    aaaa    ....
+b    c  .    c  .    c  .    c  b    c
+b    c  .    c  .    c  .    c  b    c
+ ....    ....    dddd    dddd    dddd
+e    f  .    f  e    .  .    f  .    f
+e    f  .    f  e    .  .    f  .    f
+ gggg    ....    gggg    gggg    ....
+
+  5:      6:      7:      8:      9:
+ aaaa    aaaa    aaaa    aaaa    aaaa
+b    .  b    .  .    c  b    c  b    c
+b    .  b    .  .    c  b    c  b    c
+ dddd    dddd    ....    dddd    dddd
+.    f  e    f  .    f  e    f  .    f
+.    f  e    f  .    f  e    f  .    f
+ gggg    gggg    ....    gggg    gggg
+
+The problem is that the signals which control the segments have been
+mixed up on each display.
+
+The submarine is still trying to display numbers by producing output
+on signal wires a through g, but those wires are connected to segments
+randomly.
+
+Worse, the wire/segment connections are mixed up separately for each
+four-digit display! (All of the digits within a display use the same
+connections, though.)
+
+For each display, you watch the changing signals for a while, make a
+note of all ten unique signal patterns you see, and then write down a
+single four digit output value (your puzzle input). Using the signal
+patterns, you should be able to work out which pattern corresponds to
+which digit.
+
+-----------
+
+Input example:
+
+  acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf
+
+Each entry consists of ten unique signal patterns, a | delimiter, and
+finally the four digit output value.
+
+Within an entry, the same wire/segment connections are used (but you
+don't know what the connections actually are).
+
+The unique signal patterns correspond to the ten different ways the
+submarine tries to render a digit using the current wire/segment
+connections.
+
+Because 7 is the only digit that uses three segments, dab in the above
+example means that to render a 7, signal lines d, a, and b are
+on. Because 4 is the only digit that uses four segments, eafb means
+that to render a 4, signal lines e, a, f, and b are on.
+
+Using this information, you should be able to work out which
+combination of signal wires corresponds to each of the ten
+digits. Then, you can decode the four digit output value.
+
+--------------
+
+For now, focus on the easy digits.
+
+
+---------
+
+We can always immediately infer a mapping 'wire -> segment'.
+
+Just consider the three digits value. The first digit tells us a
+mapping between whatever that digit is, and segment A.
+
+For example, if we find 'dab', we get
+
+d -> a
+
+
+
