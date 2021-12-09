@@ -1,3 +1,12 @@
+DISCLAIMER: I did not write this code, I just keep it here as a
+references as to how things can be done with less lines of code.
+
+The author can be found in the following thread
+
+https://www.reddit.com/r/adventofcode/comments/rca6vp/2021_day_9_solutions/
+
+------------------
+
 from math import prod
 
 height = {(x,y):int(h) for y,l in enumerate(open(0))
