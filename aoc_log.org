@@ -1,0 +1,193 @@
+#+TITLE: Advent of Code – 2021 (Python)
+#+AUTHOR: Leonardo Tamiano
+
+* Day 12: Passage Pathing
+  [2021-12-12 dom 21:27]
+
+  L'idea è quella di effettuare la visita di un grafo. Come prima cosa
+  quindi in entrambe le parti del problema dobbiamo scrivere il codice
+  necessario per costruire il grafo a partire dall'input.
+
+  Dato che l'input è formattato come segue
+
+  #+begin_example
+fs-end
+he-DX
+fs-he
+start-DX
+pj-DX
+end-zg
+  #+end_example
+  
+  Il codice python utilizzato per creare il grafo è il seguente
+
+  #+begin_src python
+def create_graph(lines):
+    # NOTE: the graph is bi-directional    
+    graph = {}
+
+    for line in lines:
+        splitted_l = line.split("-")
+        node1, node2 = splitted_l[0].strip(), splitted_l[1].strip()
+
+        # add edge 'node1 -> node2'
+        if node1 not in graph:
+            graph[node1] = [node2]
+        else:
+            graph[node1].append(node2)
+
+        # add edge 'node2 -> node1'
+        if node2 not in graph:
+            graph[node2] = [node1]
+        else:
+            graph[node2].append(node1)        
+
+    return graph
+  #+end_src
+
+  A questo punto andiamo a vedere gli algoritmi utilizzati per
+  visitare il grafo per le due parti del problema.
+
+** Parte 1
+   Nella prima parte dobbiamo contare il numero di cammini che partono
+   dal nodo ~start~ e arrivano al nodo ~end~. I cammini sono poi vincolati
+   nel seguente modo: *i nodi con etichetta minuscola possono essere utilizzati una sola volta*.
+
+   Se vogliamo solamente contare il numero di cammini troviamo quindi
+   il seguente algoritmo
+
+   #+begin_src python
+def count_paths_part_1(graph, current_node, visited_small_caves):
+    # -- base cases
+    if current_node == 'end':
+        return 1
+    if current_node not in graph:
+        return 0
+    else:
+        result = 0
+        updated_visited_small_caves = visited_small_caves.copy()
+        
+        # -- visit current_node
+        if current_node.islower():
+            updated_visited_small_caves.add(current_node)
+
+        # -- recurse on all of its neighbours
+        for possible_node in graph[current_node]:
+            # -- we can only go once for each lower-node
+            if possible_node.islower() and possible_node not in updated_visited_small_caves:
+                result += count_paths_part_1(graph, possible_node, updated_visited_small_caves)
+            elif possible_node.isupper():
+                result += count_paths_part_1(graph, possible_node, updated_visited_small_caves)
+
+        return result
+   #+end_src
+
+   Se invece vogliamo anche stampare tutti i possibili cammini l'idea
+   è quella di aggiungere un ulteriore argomento alla funzione per
+   ottenere la seguente
+
+   #+begin_src python
+def enhanced_count_paths_part_1(graph, current_node, visited_small_caves, visited_nodes):
+    # -- base cases
+    if current_node == 'end':
+        return 1
+    if current_node not in graph:
+        return 0
+    else:
+        result = 0
+
+        updated_visited_small_caves = visited_small_caves.copy()
+        # -- visit current_node
+        if current_node.islower():
+            updated_visited_small_caves.add(current_node)
+        
+        updated_visited_nodes = visited_nodes.copy()
+        updated_visited_nodes.append(current_node)
+
+        # -- visit all of its neighbours
+        for possible_node in graph[current_node]:
+            if possible_node.islower() and possible_node not in updated_visited_small_caves:
+                result += enhanced_count_paths_part_1(graph, possible_node, updated_visited_small_caves, updated_visited_nodes)
+            elif possible_node.isupper():
+                result += enhanced_count_paths_part_1(graph, possible_node, updated_visited_small_caves, updated_visited_nodes)
+
+        return result
+   #+end_src
+
+   ----------------
+
+   La funzione finale è quindi la seguente
+
+   #+begin_src python
+def part_one():
+    with open("input.txt", "r") as f:
+        lines = f.readlines()
+        # -- build graph structure by reading input
+        graph = create_graph(lines)
+        # -- visit the graph and count the paths
+        result = count_paths_part_1(graph, "start", set())
+        print(f"Result of part one: {result}")
+   #+end_src
+   
+** Parte 2   
+   La seconda parte ci chiede di contare tutti i cammini che
+   soddisfano questo vincolo: *solo un nodo con etichetta minuscola
+   diverso dal nodo di partenza e da quello di arrivo è utilizzato al
+   massimo volte*. Il resto dei vincoli è rimasto invariato.
+
+   L'idea è quindi quella di scrivere una funzione che calcola il
+   numero di cammini in cui un certo nodo (~small_cave~) è visitato un certo numero
+   di volte (~small_cave_count~).
+ 
+   #+begin_src python
+def count_paths_part_2(graph, current_node, visited_small_caves, small_cave, small_cave_count):
+    # -- base cases
+    if current_node == 'end':
+        return int(small_cave_count == 0)
+    elif current_node not in graph:
+        return 0
+    else:
+        result = 0
+        updated_visited_small_caves = visited_small_caves.copy()
+        
+        # -- visit current_node
+        if current_node.islower():
+            updated_visited_small_caves.add(current_node)
+
+        # -- visit all of its neighbours
+        for possible_node in graph[current_node]:
+            if possible_node.islower():
+                if possible_node == small_cave and small_cave_count > 0:
+                    result += count_paths_part_2(graph, possible_node, updated_visited_small_caves, small_cave, small_cave_count - 1)
+                elif possible_node not in updated_visited_small_caves:
+                    result += count_paths_part_2(graph, possible_node, updated_visited_small_caves, small_cave, small_cave_count)
+            elif possible_node.isupper():
+                result += count_paths_part_2(graph, possible_node, updated_visited_small_caves, small_cave, small_cave_count)
+        return result
+   #+end_src
+
+   Utilizzando questa funzione possiamo risolvere la seconda parte del
+   problema nel seguente modo
+
+   #+begin_src python
+def part_two():
+    graph = {}
+    with open("input.txt", "r") as f:
+        lines = f.readlines()
+
+        # -- build graph structure by reading input
+        graph = create_graph(lines)
+
+        # -- visit the graph and count the paths
+        final_res = 0        
+        small_caves = [n for n in graph if n.islower() and n != 'start' and n != 'end']
+        for cave in small_caves:
+            final_res += count_paths_part_2(graph, "start", set(), cave, 2)
+        final_res += count_paths_part_1(graph, "start", set())
+        
+        print(f"Result of part two: {final_res}")
+   #+end_src
+
+   Come possiamo vedere, calcoliamo il numero di percorsi in cui
+   ciascun nodo minuscolo appare esattamente due volte, e poi
+   calcoliamo il numero di percorsi utilizzando i vincoli di prima.
