@@ -1,0 +1,35 @@
+Suppose we're trying to fold for y = 7.
+
+This means we are folding with respect to an horizontal line.
+
+The fold is done UP.
+
+In particular this means that we have to iterate over the lower half
+on the board and move each point to its upper part.
+
+The folding is done symmetrically on the line y = 7.
+
+Consider the point
+
+     (8, 0)
+
+This point will move to
+
+     (6, 0)
+
+because 8 = 7 + 1, therefore its destination will be 6 = 7 - 1.
+
+Thus, starting from a general coordinate (x, y), to find the
+respective folded coordinate (x', y') we can use the following formulas.
+
+    x' = x
+    y' = 7 - k
+
+where
+
+    y = 7 + k
+
+
+Notice also that when doing a vertical fold, we don't have to change
+the number of columns, but only the number of rows. That is, from an N
+x N matrix we'll arrive to a N/2 x N matrix.
