@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from collections import Counter
-
 # --- Day 14: Extended Polymerization ---
 
 # The submarine manual contains instructions for finding the optimal
@@ -17,57 +15,54 @@ from collections import Counter
 
 # These insertions all happen simultaneously.
 
-def find_rules(template, rules_prefix):
-    """Given a template and a set of rules prefixes, find the ones that
-match and return them in a sorted list, where the sorting is done
-based on the index of first appearance of the prefix in the template"""
+import itertools
 
-    found_rules = []
-    for prefix in rules_prefix:
-
-        # NOTE: be careful of adding all occurences of a given prefix.
-        prefix_occ = set()
-        occ = template.find(prefix, 0)
-        while occ != -1 and occ not in prefix_occ:
-            prefix_occ.add(occ)
-            occ = template.find(prefix, occ + 1)
-
-        for occ in prefix_occ:
-            found_rules.append((prefix, occ))
-
-    found_rules.sort(key=lambda x: x[1])
-    return found_rules
-
-def apply_rules(template, rules, found_rules):
-    """ Apply given set of rules to given template and return the new template"""
-    new_template = ""
-
-    last_index = 0
-    for i, rule in enumerate(found_rules):
-        prefix, index = rule
-        new_template += template[last_index : index + 1] + rules[prefix] + prefix[1]
-        last_index = index + 2
-    new_template += template[last_index:]
+def construct_pairs_representation(template, rules):
+    unique_letters = "".join(list(set("".join(list(rules.keys())) + "".join(list(rules.values())) + "".join(list(template)))))
     
-    return new_template
+    # -- initialize pairs representation
+    pairs = {}
+    for x in itertools.permutations(unique_letters, 2):
+        pairs["".join(x)] = 0
+    for x in unique_letters:
+        pairs[f"{x}{x}"] = 0
 
-def evolve(template, rules):
-    """Start from a template and evolve it to the next according to a given set of possible rules"""
-    rules_prefix = list(rules.keys())
-    found_rules = find_rules(template, rules_prefix)
-    new_template = apply_rules(template, rules, found_rules)
-    return new_template
+    for (x, y) in list(zip(template, template[1:])):
+        pairs[f"{x}{y}"] += 1
 
-def find_most_common(template):
-    pass
+    return pairs
 
-# --------------------------------------------------------------------
+def even_better_evolve(pairs, rules):
+    new_pairs = {x:0 for x in pairs.keys()}
+    
+    # -- evolve pair representation
+    for r in rules:
+        if pairs[r] > 0:
+            # -- we have a match
+            # print(f"Found matching rule: {r} -> {rules[r]}")
+            new_pairs[f"{r[0]}{rules[r]}"] += pairs[r]
+            new_pairs[f"{rules[r]}{r[1]}"] += pairs[r]
 
-# Apply 10 steps of pair insertion to the polymer template and find
-# the most and least common elements in the result. What do you get if
-# you take the quantity of the most common element and subtract the
-# quantity of the least common element?
+    return new_pairs
 
+def compute_result(template, pairs):
+    unique_letters = set("".join(list(pairs.keys())))
+    count = {l: 0 for l in unique_letters}
+    
+    for l in unique_letters:
+        for p in pairs:
+            if l == f"{p[0]}":
+                count[l] += pairs[p]
+
+    # The last letter never changes.
+    count[template[-1]] += 1
+
+    sorted_keys = list(count.keys())
+    sorted_keys.sort(key=lambda x: count[x], reverse=True)
+    
+    return count[sorted_keys[0]] - count[sorted_keys[-1]]
+                
+# ---------------------------------------------
 
 def part_one():
     with open("input.txt", "r") as f:
@@ -80,31 +75,37 @@ def part_one():
         for rule in s_lines[1].strip().split("\n"):
             s_rule = rule.split(" -> ")
             rules[s_rule[0]] = s_rule[1]
-            
-        for i in range(0, 40):
-            print(f"Starting: {i}...")
-            template = evolve(template, rules)
-            if i == 25:
-                print(template)
 
-        counts = Counter(template)
+        pairs = construct_pairs_representation(template, rules)
+        for i in range(0, 10):
+            pairs = even_better_evolve(pairs, rules)
 
-        sorted_keys = list(counts.keys())
-        sorted_keys.sort(key=lambda x : counts[x], reverse=True)
-
-        most_common_key = sorted_keys[0]
-        least_common_key = sorted_keys[-1]
-
-        print(f"Result of part one: {counts[most_common_key] - counts[least_common_key]}")
-
+        result = compute_result(template, pairs)
+        print(f"Solution to part one: {result}")
+     
 # ------
     
 def part_two():
     with open("input.txt", "r") as f:
-        pass
+        s_lines = f.read().split("\n\n")
+
+        # -- read input
+        template = s_lines[0].strip()
+        
+        rules = {}
+        for rule in s_lines[1].strip().split("\n"):
+            s_rule = rule.split(" -> ")
+            rules[s_rule[0]] = s_rule[1]
+
+        pairs = construct_pairs_representation(template, rules)
+        for i in range(0, 40):
+            pairs = even_better_evolve(pairs, rules)
+
+        result = compute_result(template, pairs)
+        print(f"Solution to part one: {result}")
 
 # ------
     
 if __name__ == "__main__":
-    # part_one()
-    # part_two()
+    part_one()
+    part_two()

@@ -191,3 +191,131 @@ def part_two():
    Come possiamo vedere, calcoliamo il numero di percorsi in cui
    ciascun nodo minuscolo appare esattamente due volte, e poi
    calcoliamo il numero di percorsi utilizzando i vincoli di prima.
+
+* Day 14: Extended Polymerization
+
+** Try 1: Strings representation (failure)
+   My first idea was to simply represent the entire polymer template
+   as a sequence of characters and evolve the string using the
+   particular rules given in the input.
+
+   This approach is implemented as follows
+   
+   #+begin_src python
+def better_evolve(template, rules):
+    l = [f"{x}{y}" for (x, y) in zip(template, template[1:])]
+    
+    for i, prefix in enumerate(l):
+        if prefix in rules:
+            if i == len(l) - 1:
+                l[i] = prefix[0] + rules[prefix] + prefix[1]
+            else:
+                l[i] = prefix[0] + rules[prefix]
+
+    return "".join(l)
+   #+end_src
+
+   Where the input is read as such
+
+   #+begin_src python
+template = s_lines[0].strip()
+
+rules = {}
+for rule in s_lines[1].strip().split("\n"):
+    s_rule = rule.split(" -> ")
+    rules[s_rule[0]] = s_rule[1]
+   #+end_src
+
+   This approach however only works for the first part of the
+   problem. For the second part the string simply becomes too big and
+   it overflows the available memory.
+   
+** Try 2: Pairs representation (success)
+   After failing the first try I tried another type of
+   representation. The idea this time was to count the different
+   number of pairs, and work on that representation when transforming
+   from one template to another.
+
+   To construct this representation we can use this function.
+
+   #+begin_src python
+def construct_pairs_representation(template, rules):
+    unique_letters = "".join(list(set("".join(list(rules.keys())) + "".join(list(rules.values())) + "".join(list(template)))))
+    
+    # -- initialize pairs representation
+    pairs = {}
+    for x in itertools.permutations(unique_letters, 2):
+        pairs["".join(x)] = 0
+    for x in unique_letters:
+        pairs[f"{x}{x}"] = 0
+
+    for (x, y) in list(zip(template, template[1:])):
+        pairs[f"{x}{y}"] += 1
+
+    return pairs
+   #+end_src
+
+   We can then perform the template synthesis with this one
+
+   #+begin_src python
+def even_better_evolve(pairs, rules):
+    new_pairs = {x:0 for x in pairs.keys()}
+    
+    # -- evolve pair representation
+    for r in rules:
+        if pairs[r] > 0:
+            # -- we have a match
+            # print(f"Found matching rule: {r} -> {rules[r]}")
+            new_pairs[f"{r[0]}{rules[r]}"] += pairs[r]
+            new_pairs[f"{rules[r]}{r[1]}"] += pairs[r]
+
+    return new_pairs
+   #+end_src
+
+   And we can evaluate our answer with the following function. Note
+   that in this function we count only the first letter for each
+   pair. This is done to make sure that we don't doubly count the
+   letters. Then we just have to add one to the final letter of the
+   original template.
+
+   #+begin_src python
+def compute_result(template, pairs):
+    unique_letters = set("".join(list(pairs.keys())))
+    count = {l: 0 for l in unique_letters}
+    
+    for l in unique_letters:
+        for p in pairs:
+            if l == f"{p[0]}":
+                count[l] += pairs[p]
+
+    # The last letter never changes.
+    count[template[-1]] += 1
+
+    sorted_keys = list(count.keys())
+    sorted_keys.sort(key=lambda x: count[x], reverse=True)
+    
+    return count[sorted_keys[0]] - count[sorted_keys[-1]]
+   #+end_src
+
+   Then the actual code for the challenge is shown below
+
+   #+begin_src python
+def part_two():
+    with open("input.txt", "r") as f:
+        s_lines = f.read().split("\n\n")
+
+        # -- read input
+        template = s_lines[0].strip()
+        
+        rules = {}
+        for rule in s_lines[1].strip().split("\n"):
+            s_rule = rule.split(" -> ")
+            rules[s_rule[0]] = s_rule[1]
+
+        pairs = construct_pairs_representation(template, rules)
+        for i in range(0, 40):
+            pairs = even_better_evolve(pairs, rules)
+
+        result = compute_result(template, pairs)
+        print(f"Solution to part one: {result}")
+   #+end_src
