@@ -1,7 +1,7 @@
 #+TITLE: Advent of Code – 2021 (Python)
 #+AUTHOR: Leonardo Tamiano
 
-* Day 12: Passage Pathing
+* DONE Day 12: Passage Pathing
   [2021-12-12 dom 21:27]
 
   L'idea è quella di effettuare la visita di un grafo. Come prima cosa
@@ -192,7 +192,7 @@ def part_two():
    ciascun nodo minuscolo appare esattamente due volte, e poi
    calcoliamo il numero di percorsi utilizzando i vincoli di prima.
 
-* Day 14: Extended Polymerization
+* DONE Day 14: Extended Polymerization
 
 ** Try 1: Strings representation (failure)
    My first idea was to simply represent the entire polymer template
@@ -318,4 +318,174 @@ def part_two():
 
         result = compute_result(template, pairs)
         print(f"Solution to part one: {result}")
+   #+end_src
+
+* DONE Day 15: Chiton
+  
+** Part 1 - Problem
+   The cavern is large, but has a very low ceiling, restricting your
+   motion to two dimensions. *The shape of the cavern resembles a
+   square*; a quick scan of chiton density produces a map of risk level
+   throughout the cave (your puzzle input). For example:
+
+   #+begin_example
+1163751742
+1381373672
+2136511328
+3694931569
+7463417111
+1319128137
+1359912421
+3125421639
+1293138521
+2311944581
+   #+end_example
+
+   You start in the top left position, your destination is the bottom
+   right position, and you cannot move diagonally.
+
+   The number at each position is its risk level; to determine the
+   total risk of an entire path, add up the risk levels of each
+   position you enter (that is, don't count the risk level of your
+   starting position unless you enter it; leaving it adds no risk to
+   your total).
+
+   Your goal is *to find a path with the lowest total risk*.
+
+   What is the lowest total risk of any path from the top left to the
+   bottom right?
+
+** Part 1 - Solution
+   The idea is to implement ~dijkstra~ algorithm using a ~heap queue~
+   offered by python.
+
+   To do this we first implement a function that returns the adjacent
+   cell of a given position.
+
+   #+begin_src python
+def get_adjacent(max_rows, max_cols, x, y):
+    possible_pos = [(x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)]
+    return [(x, y) for (x, y) in possible_pos if x >=0 and x < max_rows and y >= 0 and y < max_cols]
+   #+end_src
+
+   And then we implement the actual dijkstra algorithm for finding the
+   shortest paths in a weighted graph
+
+   #+begin_src python
+def dijkstra(positions, grid, s):
+    distance = {}
+    found_pos_opt = {}
+    heap = []
+
+    n_rows = len(grid)
+    n_cols = len(grid[0])
+
+    for p in positions:
+        distance[p] = math.inf if p != s else 0
+        found_pos_opt[p] = False
+
+    s_x, s_y = s
+    heapq.heappush(heap, (distance[s], s))
+
+    while heap:
+        _, u = heapq.heappop(heap)
+
+        if found_pos_opt[u]:
+            continue
+
+        # used to not having to implement decrease-key operation
+        found_pos_opt[u] = True
+
+        u_x, u_y = u
+        for v in get_adjacent(n_rows, n_cols, u_x, u_y):
+            v_x, v_y = v
+
+            if distance[v] == math.inf:
+                distance[v] = distance[u] + grid[v_x][v_y]
+                heapq.heappush(heap, (distance[v], v))
+                
+            elif distance[u] + grid[v_x][v_y] < distance[v]:
+                distance[v] = distance[u] + grid[v_x][v_y]
+                heapq.heappush(heap, (distance[v], v))
+                        
+    return distance
+   #+end_src
+
+   After this the solution to part one can be easily implemented.
+
+   #+begin_src python
+def part_one():
+    with open("input.txt", "r") as f:
+        grid = []
+
+        for line in f.readlines():
+            rows = [int(n) for n in list(line) if n != '\n']
+            grid.append(rows)
+
+        n_rows = len(grid)
+        n_cols = len(grid[0])
+
+        s = (0, 0)
+        positions = []
+        for x in range(0, n_rows):
+            for y in range(0, n_cols):
+                positions.append((x, y))
+        
+        distances = dijkstra(positions, grid, (0, 0))
+        result = distances[(n_rows - 1, n_cols - 1)]
+        
+        print(f"Solution to part one: {result}")
+   #+end_src
+   
+
+** Part 2 - Problem
+   The entire cave is actually five times larger in both dimensions
+   than you thought; the area you originally scanned is just one tile
+   in a 5x5 tile area that forms the full map.
+
+   Your original map tile repeats to the right and downward; each time
+   the tile repeats to the right or downward, all of its risk levels
+   are 1 higher than the tile immediately up or left of it. However,
+   risk levels above 9 wrap back around to 1.
+   
+** Part 2 - Solution
+   The idea essentially is to construct this larger graph, and then
+   apply the same algorithm.
+
+   To construct the graph the following two functions can be used.
+
+   #+begin_src python
+def grow_horizontally(grid, level):
+    new_grid = []
+    
+    for old_row in grid:
+        new_row = []
+        for i in range(1, level + 1):
+            new_row += [x + i if x + i <= 9 else ((x + i) % 9) for x in old_row]
+        new_grid.append(old_row + new_row)
+
+    return new_grid
+   #+end_src
+
+   #+begin_src python
+def grow_vertically(grid, level):
+    new_grid = grid.copy()
+
+    for i in range(1, level + 1):
+        for old_row in grid:
+            new_row = [x + i if x + i <= 9 else ((x + i) % 9) for x in old_row]
+            new_grid.append(new_row)
+
+    return new_grid
+   #+end_src
+
+   Then, by calling them as such, we're able to construct the map
+   satisfying the requirements for then applying Dijkstra and solving
+   the challenge.
+
+   #+begin_src python
+# first, grow horizontally
+grid = grow_horizontally(grid, 4)
+# then, vertically
+grid = grow_vertically(grid, 4)
    #+end_src
