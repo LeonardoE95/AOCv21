@@ -21,20 +21,20 @@
 # Packets with type ID 4 represent a literal value. Literal value
 # packets encode a single binary number.
 
-# TODO: make sure the literal value are parsed correctly.
-
-def decode_packet(packet_data, level=0):
+# NOTE: assume packet_data is given in binary form
+def decode_packet(packet_data, level=0, debug=False):
     if packet_data == "":
-        return (0, 0)
+        print(f"[{level}] - Found empty packet.")
+        return (0, 0, 0)
     
-    packet_version = packet_data[:3]
-    packet_type = packet_data[3:3 + 3]
-    
-    print(f"{level}[INFO] - Packet version: {int(packet_version, 2)}")
-    print(f"{level}[INFO] - Packet type: {int(packet_type, 2)}")
+    packet_version = int(packet_data[:3], 2)
+    packet_type = int(packet_data[3:3 + 3], 2)
 
-    if int(packet_type, 2) == 4:
-        print(f"{level}[INFO] - We have a literal value packet")
+    if debug:
+        print(f"[{level}] - Packet version: {packet_version}")
+        print(f"[{level}] - Packet type: {packet_type}")
+
+    if packet_type == 4:        
         literal_value = ""
         i = 6
         done = False
@@ -46,62 +46,103 @@ def decode_packet(packet_data, level=0):
             if continuation_bit == '0':
                 done = True
 
-        print(f"{level}[INFO] - literal_value = {int(literal_value, 2)}")
-        return (i, int(packet_version, 2)) # return number of bits read
+        literal_value = int(literal_value, 2)
+
+        if debug:
+            print(f"[{level}] - We have a literal value packet")
+            print(f"[{level}] - literal_value = {literal_value}")
+            
+        return (i, packet_version, literal_value)
         
     else:
-        print(f"{level}[INFO] - We have an operator packet")
-        length_type_ID = packet_data[6]
-        print(f"{level}[INFO] - Length type ID: {length_type_ID}")
+        sum_of_packet_versions = packet_version
+        length_type_ID = int(packet_data[6], 2)
+        sub_packets_values = []
+        packet_value = 0
+        total_bit_read = 0
 
-        if int(length_type_ID, 2) == 0:
-            total_length_in_bits = packet_data[7: 7 + 15]
-            print(f"{level}[INFO] - Total length in bits = {int(total_length_in_bits, 2)}")
+        if debug:
+            print(f"[{level}] - We have an operator packet")
+            print(f"[{level}] - Length type ID: {length_type_ID}")
 
-            i = 0
-            result = int(packet_version, 2)
-            while i < int(total_length_in_bits, 2):
-                bit_read, v_n = decode_packet(packet_data[22 + i:], level + 1)
-                i += bit_read
-                result += v_n
+        # -- compute values recursively on all sub-packets
+        if length_type_ID == 0:
+            total_length_in_bits = int(packet_data[7: 7 + 15], 2)
 
-            return (22 + i, result)
+            if debug:
+                print(f"[{level}] - Total length in bits = {total_length_in_bits}")
+
+            total_bit_read = 0
+            while total_bit_read < total_length_in_bits:
+                bit_read, sub_packet_version_sum, sub_packet_value = decode_packet(packet_data[22 + total_bit_read:], level + 1, debug=debug)
+                total_bit_read += bit_read
+                sum_of_packet_versions += sub_packet_version_sum
+                sub_packets_values.append(sub_packet_value)
+            total_bit_read = 22 + total_bit_read
             
-        elif int(length_type_ID, 2) == 1:
-            number_of_sub_packets = packet_data[7: 7 + 11]
-            print(f"{level}[INFO] - Number of sub packets = {int(number_of_sub_packets, 2)}")
+        elif length_type_ID == 1:
+            number_of_sub_packets = int(packet_data[7: 7 + 11], 2)
 
-            n = 0
-            i = 0
-            result = int(packet_version, 2)
-            while n < int(number_of_sub_packets, 2):
-                bit_read, v_n = decode_packet(packet_data[18 + i:], level + 1)
-                i += bit_read
-                result += v_n
-                n += 1
+            if debug:
+                print(f"[{level}] - Number of sub packets = {number_of_sub_packets}")
 
-            return (18 + i, result)
+            number_of_sub_packets_read = 0
+            total_bit_read = 0
+            while number_of_sub_packets_read < number_of_sub_packets:
+                bit_read, sub_packet_version_sum, sub_packet_value = decode_packet(packet_data[18 + total_bit_read:], level + 1, debug=debug)
+                total_bit_read += bit_read
+                sum_of_packet_versions += sub_packet_version_sum
+                number_of_sub_packets_read += 1
+                sub_packets_values.append(sub_packet_value)
+            total_bit_read = 18 + total_bit_read
 
         else:
-            print(f"{level}[ERROR] - Unkown value for length type ID: {length_type_ID}!")
+            print(f"[ERROR ({level})] - Unkown value for length type ID: {length_type_ID}!")
+            return (0, 0, 0)
 
-            return (0, 0)
+        # -- compute value of packet
+        if packet_type == 0:
+            # -- sum packets
+            packet_value = sum(sub_packets_values)
+        elif packet_type == 1:
+            # -- product packets
+            packet_value = 1
+            for x in sub_packets_values:
+                packet_value *= x
+        elif packet_type == 2:
+            # -- minimum packets
+            packet_value = min(sub_packets_values)
+        elif packet_type == 3:
+            # -- maximum packets
+            packet_value = max(sub_packets_values)
+        elif packet_type == 5:
+            # -- greater than packets
+            packet_value = sub_packets_values[0] > sub_packets_values[1]
+        elif packet_type == 6:
+            # -- less than packets
+            packet_value = sub_packets_values[0] < sub_packets_values[1]
+        elif packet_type == 7:
+            # -- equal to packets
+            packet_value = sub_packets_values[0] == sub_packets_values[1]
+
+        return (total_bit_read, sum_of_packet_versions, packet_value)
 
 def part_one():
-    with open("tmp.txt", "r") as f:
+    with open("input.txt", "r") as f:
         packet_data = "".join([f"{(int(x, 16)):04b}" for x in f.read().strip()])
-        # 11101110000000001101010000001100100000100011000001100000
-        # print(packet_data)
-        print(decode_packet(packet_data))
+        _, version_number_sum, _ = decode_packet(packet_data)
+        print(f"Solution to part one: {version_number_sum}")
         
 # ------
     
 def part_two():
     with open("input.txt", "r") as f:
-        pass
+        packet_data = "".join([f"{(int(x, 16)):04b}" for x in f.read().strip()])
+        _, _, value = decode_packet(packet_data)
+        print(f"Solution to part two: {value}")
 
 # ------
     
 if __name__ == "__main__":
     part_one()
-    # part_two()
+    part_two()
