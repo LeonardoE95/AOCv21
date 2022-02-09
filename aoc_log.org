@@ -489,3 +489,17 @@ grid = grow_horizontally(grid, 4)
 # then, vertically
 grid = grow_vertically(grid, 4)
    #+end_src
+
+* DONE Day 16: Packet Decoder
+  [2022-01-17 lun 11:41]
+  
+* TODO Day 17: Trick Shot
+  Once we're on the right of the critical region we're never gonna
+  make it anymore. Therefore we should define a function that
+  determines if this is the case.
+
+  Then, we can find the highest and lowest x and y values for which
+  after 1 step we're over the area.
+
+  After that, we try all possibilites, and record for each the highest
+  y point we reach.
